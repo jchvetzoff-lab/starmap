@@ -464,69 +464,115 @@ const bgMat=new THREE.ShaderMaterial({
 });
 scene.add(new THREE.Points(bgGeo,bgMat));
 
-// Milky way band + cosmic nebulae distributed across the full sky sphere
-const nebulaColors=[
-  [25,15,50],[15,20,45],[30,10,40],[10,25,50],[20,15,55],
-  [35,12,45],[12,18,55],[22,8,48],[18,28,42],[28,18,52],
-  [8,15,38],[14,22,32],[20,12,58],[32,14,36],[10,18,48],
-  [16,10,42],[24,20,38],[18,14,50],[12,20,55],[26,16,44]
-];
-// Main milky way band: 8 large nebulae forming a great circle
-for(let n=0;n<8;n++){
-  const c=document.createElement('canvas');c.width=512;c.height=512;const ctx=c.getContext('2d');
-  for(let i=0;i<10;i++){
-    const x=100+Math.random()*312,y=100+Math.random()*312,r=60+Math.random()*200;
-    const g=ctx.createRadialGradient(x,y,0,x,y,r);
-    const rgb=nebulaColors[n%nebulaColors.length];
-    g.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.14)`);g.addColorStop(.5,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.05)`);g.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=g;ctx.fillRect(0,0,512,512);
+// ═════ NEBULAE & COSMIC DUST (Sprites — always face camera, no geometric edges) ═════
+// Generate an organic nebula texture with circular falloff (no visible edges)
+function mkNebTex(sz,blobs,palette,maxAlpha){
+  const c=document.createElement('canvas');c.width=sz;c.height=sz;const ctx=c.getContext('2d');
+  const h=sz/2;
+  // Multiple organic blobs with noise-like placement
+  for(let i=0;i<blobs;i++){
+    // Keep blobs well inside — distance from center < 40% of canvas
+    const angle=Math.random()*Math.PI*2;
+    const dist=Math.random()*h*0.35;
+    const bx=h+Math.cos(angle)*dist;
+    const by=h+Math.sin(angle)*dist;
+    const br=h*0.2+Math.random()*h*0.45;
+    const rgb=palette[Math.floor(Math.random()*palette.length)];
+    const a=maxAlpha*(0.4+Math.random()*0.6);
+    const g=ctx.createRadialGradient(bx,by,0,bx,by,br);
+    g.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a.toFixed(3)})`);
+    g.addColorStop(0.3,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(a*0.5).toFixed(3)})`);
+    g.addColorStop(0.7,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(a*0.15).toFixed(3)})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,sz,sz);
   }
-  const tex=new THREE.CanvasTexture(c);
-  const geo=new THREE.PlaneGeometry(700+Math.random()*500,500+Math.random()*400);
-  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
-  const mesh=new THREE.Mesh(geo,mat);
-  // Distribute along a great circle (milky way band) tilted 30°
-  const bAng=(n/8)*Math.PI*2+Math.random()*.3;
-  const bR=350+Math.random()*300;
-  const tilt=0.52; // ~30° tilt
-  mesh.position.set(
-    Math.cos(bAng)*bR,
-    Math.sin(bAng)*bR*Math.sin(tilt)+(Math.random()-.5)*120,
-    Math.sin(bAng)*bR*Math.cos(tilt)+(Math.random()-.5)*120
-  );
-  mesh.lookAt(0,0,0);
-  mesh.rotation.z=Math.random()*Math.PI;
-  scene.add(mesh);
+  // Apply circular vignette mask — ensures ZERO content at edges (kills all square artifacts)
+  const imgData=ctx.getImageData(0,0,sz,sz);
+  const d=imgData.data;
+  for(let y=0;y<sz;y++){
+    for(let x=0;x<sz;x++){
+      const dx=(x-h)/h,dy=(y-h)/h;
+      const dist2=dx*dx+dy*dy;
+      // Smooth falloff: full at center, zero at radius 0.85+
+      let mask=1-smoothstep(0.4,0.92,Math.sqrt(dist2));
+      d[(y*sz+x)*4+3]=Math.round(d[(y*sz+x)*4+3]*mask);
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
-// Scattered nebulae across full sphere for uniform ambiance
-for(let n=0;n<14;n++){
-  const c=document.createElement('canvas');c.width=512;c.height=512;const ctx=c.getContext('2d');
-  for(let i=0;i<6;i++){
-    const x=128+Math.random()*256,y=128+Math.random()*256,r=100+Math.random()*160;
-    const g=ctx.createRadialGradient(x,y,0,x,y,r);
-    const rgb=nebulaColors[(n+8)%nebulaColors.length];
-    const alpha=0.04+Math.random()*0.06;
-    g.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`);g.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=g;ctx.fillRect(0,0,512,512);
-  }
-  const tex=new THREE.CanvasTexture(c);
-  const geo=new THREE.PlaneGeometry(400+Math.random()*600,400+Math.random()*600);
-  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
-  const mesh=new THREE.Mesh(geo,mat);
-  // Uniform distribution on sphere
+function smoothstep(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x);}
+
+const nebPalettes={
+  violet:[[30,15,60],[20,20,55],[40,12,50],[15,25,55],[25,18,65]],
+  blue:  [[10,20,50],[15,30,60],[8,18,45],[12,25,55],[18,22,48]],
+  warm:  [[35,15,40],[28,12,35],[40,18,45],[22,10,38],[32,20,42]],
+  teal:  [[10,28,40],[8,22,48],[14,32,45],[12,26,52],[6,20,38]],
+  rose:  [[35,10,30],[28,8,25],[40,14,35],[32,12,28],[25,15,32]]
+};
+
+// Milky way band: 12 large overlapping sprites along a great circle
+const mwPals=[nebPalettes.violet,nebPalettes.blue,nebPalettes.warm,nebPalettes.teal,nebPalettes.violet,nebPalettes.blue,nebPalettes.rose,nebPalettes.violet,nebPalettes.teal,nebPalettes.blue,nebPalettes.warm,nebPalettes.rose];
+for(let n=0;n<12;n++){
+  const tex=mkNebTex(512,14+Math.floor(Math.random()*8),mwPals[n%mwPals.length],0.12+Math.random()*0.06);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+  const spr=new THREE.Sprite(mat);
+  const sz=500+Math.random()*600;
+  spr.scale.set(sz,sz,1);
+  const bAng=(n/12)*Math.PI*2+Math.random()*.25;
+  const bR=300+Math.random()*350;
+  const tilt=0.52;
+  spr.position.set(
+    Math.cos(bAng)*bR,
+    Math.sin(bAng)*bR*Math.sin(tilt)+(Math.random()-.5)*150,
+    Math.sin(bAng)*bR*Math.cos(tilt)+(Math.random()-.5)*150
+  );
+  scene.add(spr);
+}
+
+// Scattered ambient nebulae across full sphere (20 sprites)
+for(let n=0;n<20;n++){
+  const pals=[nebPalettes.violet,nebPalettes.blue,nebPalettes.teal,nebPalettes.warm,nebPalettes.rose];
+  const tex=mkNebTex(256,6+Math.floor(Math.random()*6),pals[n%pals.length],0.04+Math.random()*0.05);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+  const spr=new THREE.Sprite(mat);
+  const sz=300+Math.random()*500;
+  spr.scale.set(sz,sz,1);
   const th2=Math.random()*Math.PI*2;
   const ph2=Math.acos(2*Math.random()-1);
-  const nR=300+Math.random()*400;
-  mesh.position.set(nR*Math.sin(ph2)*Math.cos(th2),nR*Math.sin(ph2)*Math.sin(th2),nR*Math.cos(ph2));
-  mesh.lookAt(0,0,0);
-  mesh.rotation.z=Math.random()*Math.PI*2;
-  scene.add(mesh);
+  const nR=250+Math.random()*500;
+  spr.position.set(nR*Math.sin(ph2)*Math.cos(th2),nR*Math.sin(ph2)*Math.sin(th2),nR*Math.cos(ph2));
+  scene.add(spr);
 }
-// Subtle ambient cosmic glow sphere (prevents any direction from being pure black)
+
+// Fine cosmic dust particles (3000 tiny colored points for volume)
+{
+  const dustN=3000;const dGeo=new THREE.BufferGeometry();
+  const dP=new Float32Array(dustN*3),dC=new Float32Array(dustN*3),dS=new Float32Array(dustN);
+  const dustCols=[[0.12,0.08,0.22],[0.08,0.1,0.2],[0.15,0.06,0.18],[0.06,0.12,0.22],[0.1,0.07,0.25]];
+  for(let i=0;i<dustN;i++){
+    const r=100+Math.random()*2500;const th=Math.random()*Math.PI*2;const ph=Math.acos(2*Math.random()-1);
+    dP[i*3]=r*Math.sin(ph)*Math.cos(th);dP[i*3+1]=r*Math.sin(ph)*Math.sin(th);dP[i*3+2]=r*Math.cos(ph);
+    const dc=dustCols[Math.floor(Math.random()*dustCols.length)];
+    dC[i*3]=dc[0];dC[i*3+1]=dc[1];dC[i*3+2]=dc[2];
+    dS[i]=1+Math.random()*4;
+  }
+  dGeo.setAttribute('position',new THREE.BufferAttribute(dP,3));
+  dGeo.setAttribute('color',new THREE.BufferAttribute(dC,3));
+  dGeo.setAttribute('size',new THREE.BufferAttribute(dS,1));
+  const dMat=new THREE.ShaderMaterial({
+    vertexShader:`attribute float size;varying vec3 vCol;void main(){vCol=color;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=size*(200.0/(-mv.z));gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`varying vec3 vCol;void main(){float d=length(gl_PointCoord-0.5)*2.0;float a=1.0-smoothstep(0.0,1.0,d);a*=a*0.25;gl_FragColor=vec4(vCol,a);}`,
+    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,vertexColors:true
+  });
+  scene.add(new THREE.Points(dGeo,dMat));
+}
+
+// Ambient glow sphere (subtle cosmic background preventing pure black)
 {
   const ambC=document.createElement('canvas');ambC.width=256;ambC.height=256;const actx=ambC.getContext('2d');
   const ambG=actx.createRadialGradient(128,128,0,128,128,128);
-  ambG.addColorStop(0,'rgba(12,8,28,0.25)');ambG.addColorStop(.5,'rgba(8,6,20,0.12)');ambG.addColorStop(1,'rgba(4,3,12,0.04)');
+  ambG.addColorStop(0,'rgba(14,10,30,0.2)');ambG.addColorStop(.4,'rgba(10,8,24,0.1)');ambG.addColorStop(.7,'rgba(6,5,16,0.05)');ambG.addColorStop(1,'rgba(3,2,8,0.02)');
   actx.fillStyle=ambG;actx.fillRect(0,0,256,256);
   const ambTex=new THREE.CanvasTexture(ambC);
   const ambGeo=new THREE.SphereGeometry(2800,32,32);
