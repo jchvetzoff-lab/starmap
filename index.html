@@ -375,7 +375,7 @@ function computeProx(srcCode){
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,8000);
 camera.position.set(0,20,120);
-const renderer=new THREE.WebGLRenderer({antialias:true});
+const renderer=new THREE.WebGLRenderer({antialias:true,premultipliedAlpha:false});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
 document.getElementById('three-container').appendChild(renderer.domElement);
@@ -472,7 +472,7 @@ scene.add(new THREE.Points(bgGeo,bgMat));
 // All nebula textures use 512×512 canvases — large enough to avoid
 // Chrome mipmap artifacts when stretched onto big sprites
 function mkSoftNeb(nBlobs, palette, maxAlpha){
-  const sz=512,c=document.createElement('canvas');c.width=sz;c.height=sz;
+  const sz=1024,c=document.createElement('canvas');c.width=sz;c.height=sz;
   const ctx=c.getContext('2d');const h=sz/2;
   for(let i=0;i<nBlobs;i++){
     const angle=Math.random()*Math.PI*2;
@@ -511,13 +511,13 @@ const nebPal={
 
 // LAYER 1: Ambient sky sphere — subtle warm-purple base
 {
-  const ambC=document.createElement('canvas');ambC.width=512;ambC.height=512;const actx=ambC.getContext('2d');
-  const ambG=actx.createRadialGradient(256,256,0,256,256,256);
+  const ambC=document.createElement('canvas');ambC.width=1024;ambC.height=1024;const actx=ambC.getContext('2d');
+  const ambG=actx.createRadialGradient(512,512,0,512,512,512);
   ambG.addColorStop(0,'rgba(18,14,40,0.28)');
   ambG.addColorStop(0.35,'rgba(12,10,28,0.18)');
   ambG.addColorStop(0.65,'rgba(7,6,18,0.10)');
   ambG.addColorStop(1,'rgba(3,3,10,0.04)');
-  actx.fillStyle=ambG;actx.fillRect(0,0,512,512);
+  actx.fillStyle=ambG;actx.fillRect(0,0,1024,1024);
   const ambTex=new THREE.CanvasTexture(ambC);
   ambTex.generateMipmaps=false;ambTex.minFilter=THREE.LinearFilter;ambTex.magFilter=THREE.LinearFilter;
   const ambGeo=new THREE.SphereGeometry(2800,32,32);
