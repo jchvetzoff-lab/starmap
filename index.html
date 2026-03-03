@@ -758,31 +758,31 @@ function buildConst(srcCode){
   })();
 
   // ══════ DISTANT SUN (background scenery — white light) ══════
-  const dSunGeo=new THREE.SphereGeometry(4,32,32);
+  const dSunGeo=new THREE.SphereGeometry(7,32,32);
   const dSunMat=new THREE.MeshBasicMaterial({color:0xfffff5});
   const dSun=new THREE.Mesh(dSunGeo,dSunMat);
   dSun.position.set(250,80,-350);cGroup.add(dSun);
   // Outer glow
   const sgTex=mkCoronaTex(512,255,255,248,255,250,235);
   const sg=new THREE.Sprite(new THREE.SpriteMaterial({map:sgTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0.4}));
-  sg.scale.set(120,120,1);sg.position.copy(dSun.position);sg.renderOrder=-1;cGroup.add(sg);
+  sg.scale.set(180,180,1);sg.position.copy(dSun.position);sg.renderOrder=-1;cGroup.add(sg);
   // Inner glow
   const sigTex=mkCoronaTex(512,255,255,252,255,255,245);
   const sigSp=new THREE.Sprite(new THREE.SpriteMaterial({map:sigTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0.55}));
-  sigSp.scale.set(35,35,1);sigSp.position.copy(dSun.position);sigSp.renderOrder=-1;cGroup.add(sigSp);
+  sigSp.scale.set(55,55,1);sigSp.position.copy(dSun.position);sigSp.renderOrder=-1;cGroup.add(sigSp);
   // Directional light from distant sun (white, subtle)
   const dLight=new THREE.DirectionalLight(0xfff8f0,0.3);
   dLight.position.copy(dSun.position);cGroup.add(dLight);
 
   // ══════ SOLAR SYSTEM PLANETS (background scenery) ══════
   const pDefs=[
-    {type:'mercury',r:0.6,pos:[42,-16,-52],spd:0.004},
-    {type:'venus',r:1.0,pos:[-50,8,60],spd:0.001},
-    {type:'mars',r:0.9,pos:[68,-10,-90],spd:0.003},
-    {type:'jupiter',r:6,pos:[-135,28,-175],spd:0.0008},
-    {type:'saturn',r:4,pos:[115,48,155],spd:0.0012},
-    {type:'uranus',r:2,pos:[-82,32,185],spd:0.002},
-    {type:'neptune',r:1.8,pos:[88,-28,215],spd:0.0018}
+    {type:'mercury',r:1.0,pos:[42,-16,-52],spd:0.004},
+    {type:'venus',r:1.6,pos:[-50,8,60],spd:0.001},
+    {type:'mars',r:1.4,pos:[68,-10,-90],spd:0.003},
+    {type:'jupiter',r:9,pos:[-135,28,-175],spd:0.0008},
+    {type:'saturn',r:6.5,pos:[115,48,155],spd:0.0012},
+    {type:'uranus',r:3.2,pos:[-82,32,185],spd:0.002},
+    {type:'neptune',r:3,pos:[88,-28,215],spd:0.0018}
   ];
   pDefs.forEach(d=>{
     const geo=new THREE.SphereGeometry(d.r,48,48);
@@ -793,9 +793,9 @@ function buildConst(srcCode){
   });
   // Saturn rings
   const satPos=new THREE.Vector3(115,48,155);
-  const ringGeo=new THREE.RingGeometry(6,11,64);
+  const ringGeo=new THREE.RingGeometry(9,17,64);
   const rP=ringGeo.attributes.position,rU=ringGeo.attributes.uv;
-  for(let i=0;i<rP.count;i++){const rx=rP.getX(i),ry=rP.getY(i);rU.setXY(i,(Math.sqrt(rx*rx+ry*ry)-6)/5,0.5);}
+  for(let i=0;i<rP.count;i++){const rx=rP.getX(i),ry=rP.getY(i);rU.setXY(i,(Math.sqrt(rx*rx+ry*ry)-9)/8,0.5);}
   const rc=document.createElement('canvas');rc.width=256;rc.height=1;const rCtx=rc.getContext('2d');
   const rG=rCtx.createLinearGradient(0,0,256,0);
   rG.addColorStop(0,'rgba(120,110,85,0.0)');rG.addColorStop(0.08,'rgba(130,118,90,0.5)');
@@ -842,6 +842,29 @@ function buildConst(srcCode){
     const lm=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:j.prox*.15,blending:THREE.AdditiveBlending});
     const line=new THREE.Line(lg,lm);line.userData={to:j,baseOp:j.prox*.15};cGroup.add(line);lineMeshes.push(line);
   });
+
+  // ── Inter-star constellation lines (closer + compatible = more visible) ──
+  for(let a=0;a<starMeshes.length;a++){
+    if(starMeshes[a].userData.ctr)continue;
+    const pA=new THREE.Vector3().fromBufferAttribute(starMeshes[a].geometry.attributes.position,0);
+    const jA=starMeshes[a].userData.job;
+    for(let b=a+1;b<starMeshes.length;b++){
+      if(starMeshes[b].userData.ctr)continue;
+      const pB=new THREE.Vector3().fromBufferAttribute(starMeshes[b].geometry.attributes.position,0);
+      const jB=starMeshes[b].userData.job;
+      const dist=pA.distanceTo(pB);
+      if(dist>30)continue; // only connect nearby stars
+      const avgProx=(jA.prox+jB.prox)/2;
+      const closeness=1-dist/30; // 1 when touching, 0 at max distance
+      const op=avgProx*closeness*0.12; // fine, subtle lines
+      if(op<0.008)continue; // skip invisible lines
+      const avgCol=starCol(avgProx,jA.sector===jB.sector?jA.sector:jA.sector);
+      const lg2=new THREE.BufferGeometry().setFromPoints([pA,pB]);
+      const lm2=new THREE.LineBasicMaterial({color:avgCol,transparent:true,opacity:op,blending:THREE.AdditiveBlending});
+      const ln=new THREE.Line(lg2,lm2);ln.userData={baseOp:op};cGroup.add(ln);
+    }
+  }
+
   isActive=true;animP=0;cGroup.scale.set(.01,.01,.01);
   controls.target.set(0,0,0);controls.minDistance=15;controls.maxDistance=200;
   camera.position.set(0,20,80);
