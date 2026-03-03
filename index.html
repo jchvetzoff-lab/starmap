@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StarMap — Constellation des Métiers</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#F4C542;--blue:#4FC3F7;--purple:#7C4DFF;--green:#66BB6A;--orange:#FF9800;--red:#EF5350;
+--panel:rgba(6,8,22,0.92);--border:rgba(255,255,255,0.05);--text:#E8E8F0;--dim:#555577;--glass:rgba(12,14,35,0.85)}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Inter',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+#three-container{position:fixed;inset:0;z-index:0}
+
+/* ════════ SCREENS ════════ */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 1s cubic-bezier(.4,0,.2,1),transform 1s cubic-bezier(.4,0,.2,1)}
+.screen.out{opacity:0;transform:scale(1.3);pointer-events:none}
+.screen.out-left{opacity:0;transform:translateX(-80px);pointer-events:none}
+.screen.out-right{opacity:0;transform:translateX(80px);pointer-events:none}
+.screen.hidden{display:none}
+
+/* ════════ SEARCH SCREEN ════════ */
+.s-logo{font-family:'Space Grotesk';font-size:11px;font-weight:300;letter-spacing:14px;text-transform:uppercase;color:var(--dim);margin-bottom:14px;opacity:0;animation:fu .7s ease .15s forwards}
+.s-title{font-family:'Space Grotesk';font-size:64px;font-weight:700;background:linear-gradient(135deg,var(--gold) 0%,#fff 35%,var(--blue) 65%,var(--purple) 100%);background-size:300% 300%;animation:sh 8s ease infinite,fu .7s ease .25s forwards;-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0;filter:drop-shadow(0 0 50px rgba(244,197,66,0.1))}
+.s-sub{font-size:15px;color:var(--dim);margin-bottom:56px;font-weight:300;letter-spacing:1.5px;opacity:0;animation:fu .7s ease .4s forwards}
+.s-wrap{position:relative;width:560px;opacity:0;animation:fu .7s ease .5s forwards}
+.s-input{width:100%;padding:22px 30px;font-size:16px;font-family:'Inter';background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.05);border-radius:24px;color:#fff;outline:none;transition:all .5s;backdrop-filter:blur(20px)}
+.s-input::placeholder{color:rgba(255,255,255,0.18)}
+.s-input:focus{border-color:rgba(244,197,66,0.35);background:rgba(255,255,255,0.04);box-shadow:0 0 80px rgba(244,197,66,0.06)}
+.ac{position:absolute;top:100%;left:10px;right:10px;background:var(--glass);border:1px solid var(--border);border-radius:18px;margin-top:8px;max-height:300px;overflow-y:auto;display:none;z-index:10;backdrop-filter:blur(50px);box-shadow:0 30px 80px rgba(0,0,0,0.6)}
+.ac.v{display:block}
+.aci{padding:15px 22px;cursor:pointer;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.025);transition:all .15s;display:flex;align-items:center;gap:14px}
+.aci:last-child{border:none}
+.aci:hover{background:rgba(244,197,66,0.04);color:var(--gold)}
+.aci .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.aci .code{font-size:10px;color:var(--dim);margin-left:auto;font-family:monospace;letter-spacing:1px}
+.s-btn{display:block;margin:28px auto 0;padding:20px 56px;font-size:15px;font-family:'Space Grotesk';font-weight:600;background:linear-gradient(135deg,var(--gold),#D4A017);color:#0a0a0a;border:none;border-radius:60px;cursor:pointer;transition:all .4s;letter-spacing:.5px;opacity:0;animation:fu .7s ease .65s forwards;box-shadow:0 8px 32px rgba(244,197,66,0.18)}
+.s-btn:hover{transform:translateY(-3px);box-shadow:0 16px 50px rgba(244,197,66,0.28)}
+.s-btn:disabled{opacity:.2;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ════════ QUESTIONNAIRE ════════ */
+#quiz-screen{z-index:99}
+.quiz-container{width:620px;max-width:90vw}
+.quiz-progress{display:flex;gap:6px;margin-bottom:40px;justify-content:center}
+.quiz-dot{width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,0.08);transition:all .4s}
+.quiz-dot.active{background:var(--gold);width:48px}
+.quiz-dot.done{background:rgba(244,197,66,0.3)}
+.quiz-step{display:none;animation:fu .5s ease forwards}
+.quiz-step.active{display:block}
+.quiz-q{font-family:'Space Grotesk';font-size:28px;font-weight:600;text-align:center;margin-bottom:10px;line-height:1.4}
+.quiz-hint{font-size:13px;color:var(--dim);text-align:center;margin-bottom:36px}
+.quiz-options{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.quiz-opt{padding:14px 24px;border-radius:14px;font-size:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);transition:all .25s;backdrop-filter:blur(10px);user-select:none}
+.quiz-opt:hover{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1)}
+.quiz-opt.selected{background:rgba(244,197,66,0.08);border-color:rgba(244,197,66,0.35);color:var(--gold);box-shadow:0 4px 20px rgba(244,197,66,0.08)}
+.quiz-opt.multi.selected{background:rgba(124,77,255,0.08);border-color:rgba(124,77,255,0.35);color:#B388FF}
+.quiz-slider-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%}
+.quiz-slider{-webkit-appearance:none;width:80%;height:4px;border-radius:2px;background:rgba(255,255,255,0.08);outline:none}
+.quiz-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 2px 10px rgba(244,197,66,0.3)}
+.quiz-slider-labels{display:flex;justify-content:space-between;width:80%;font-size:12px;color:var(--dim)}
+.quiz-slider-val{font-family:'Space Grotesk';font-size:24px;font-weight:600;color:var(--gold)}
+.quiz-nav{display:flex;justify-content:center;gap:14px;margin-top:40px}
+.quiz-nav-btn{padding:14px 36px;font-size:14px;font-family:'Space Grotesk';font-weight:600;border-radius:50px;cursor:pointer;transition:all .3s;letter-spacing:.3px}
+.quiz-next{background:linear-gradient(135deg,var(--gold),#D4A017);color:#0a0a0a;border:none;box-shadow:0 6px 24px rgba(244,197,66,0.15)}
+.quiz-next:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(244,197,66,0.25)}
+.quiz-next:disabled{opacity:.25;cursor:not-allowed;transform:none;box-shadow:none}
+.quiz-back{background:transparent;border:1px solid rgba(255,255,255,0.08);color:var(--dim)}
+.quiz-back:hover{border-color:rgba(255,255,255,0.15);color:#fff}
+
+/* ════════ TOP BAR ════════ */
+#top-bar{position:fixed;top:0;left:0;right:0;padding:20px 40px;display:flex;align-items:center;gap:18px;z-index:50;background:linear-gradient(to bottom,rgba(0,0,0,.92) 0%,rgba(0,0,0,.3) 80%,transparent);opacity:0;transform:translateY(-30px);transition:all .7s ease .3s;pointer-events:none}
+#top-bar.v{opacity:1;transform:translateY(0);pointer-events:all}
+.tb-b{font-family:'Space Grotesk';font-size:17px;font-weight:600;color:var(--gold)}
+.tb-s{color:rgba(255,255,255,0.1)}
+.tb-j{font-size:14px;color:rgba(255,255,255,0.45);font-weight:300}
+.tb-tags{display:flex;gap:6px;margin-left:8px}
+.tb-tag{font-size:10px;padding:4px 10px;border-radius:6px;background:rgba(124,77,255,0.08);color:#B388FF;border:1px solid rgba(124,77,255,0.12)}
+.tb-bk{margin-left:auto;padding:10px 24px;font-size:11px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;color:var(--dim);cursor:pointer;font-family:'Inter';transition:all .3s;letter-spacing:1px;text-transform:uppercase}
+.tb-bk:hover{background:rgba(255,255,255,0.07);color:#fff}
+
+/* ════════ LEGEND ════════ */
+#legend{position:fixed;bottom:28px;left:28px;z-index:50;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:20px 24px;backdrop-filter:blur(40px);opacity:0;transition:all .6s ease .5s;pointer-events:none;font-size:11px;box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+#legend.v{opacity:1;pointer-events:all}
+.lg-t{font-weight:600;margin-bottom:14px;font-size:9px;text-transform:uppercase;letter-spacing:3px;color:var(--dim)}
+.lg-r{display:flex;align-items:center;gap:12px;margin-bottom:7px}
+.lg-d{width:8px;height:8px;border-radius:50%}
+#hint-360{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:50;font-size:12px;color:var(--dim);background:var(--panel);padding:10px 20px;border-radius:10px;border:1px solid var(--border);backdrop-filter:blur(20px);opacity:0;transition:all .6s ease 1.5s;pointer-events:none}
+#hint-360.v{opacity:1}
+
+/* ════════ TOOLTIP ════════ */
+#tooltip{position:fixed;padding:16px 22px;background:var(--glass);border:1px solid rgba(255,255,255,0.05);border-radius:16px;backdrop-filter:blur(50px);pointer-events:none;opacity:0;transition:opacity .1s;z-index:60;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+#tooltip.v{opacity:1}
+.tt-n{font-weight:600;font-size:14px;margin-bottom:3px}
+.tt-s{font-size:12px;color:var(--gold)}
+.tt-se{font-size:11px;color:var(--dim);margin-top:3px}
+.tt-bar{width:100%;height:3px;background:rgba(255,255,255,0.03);border-radius:2px;margin-top:10px;overflow:hidden}
+.tt-f{height:100%;border-radius:2px;transition:width .3s}
+
+/* ════════ JOB CARD ════════ */
+#jc{position:fixed;bottom:0;right:0;width:460px;max-height:90vh;overflow-y:auto;background:var(--panel);border-left:1px solid var(--border);border-top:1px solid var(--border);border-radius:24px 0 0 0;backdrop-filter:blur(50px);z-index:55;transform:translateX(110%);transition:transform .6s cubic-bezier(.22,1,.36,1);box-shadow:-24px 0 80px rgba(0,0,0,0.5)}
+#jc.v{transform:translateX(0)}
+#jc::-webkit-scrollbar{width:3px}
+#jc::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.05);border-radius:2px}
+.jc-h{position:sticky;top:0;padding:34px 34px 24px;border-bottom:1px solid var(--border);z-index:1;background:linear-gradient(135deg,rgba(244,197,66,0.03),rgba(79,195,247,0.02));backdrop-filter:blur(50px)}
+.jc-x{position:absolute;top:20px;right:20px;width:36px;height:36px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;color:var(--dim);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.jc-x:hover{background:rgba(255,255,255,0.06);color:#fff}
+.jc-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:24px;font-size:12px;font-weight:600;margin-bottom:14px}
+.jc-badge.h{background:rgba(102,187,106,0.06);color:var(--green);border:1px solid rgba(102,187,106,0.1)}
+.jc-badge.m{background:rgba(255,152,0,0.06);color:var(--orange);border:1px solid rgba(255,152,0,0.1)}
+.jc-badge.l{background:rgba(239,83,80,0.06);color:var(--red);border:1px solid rgba(239,83,80,0.1)}
+.jc-n{font-family:'Space Grotesk';font-size:23px;font-weight:600;line-height:1.3;margin-bottom:6px}
+.jc-c{font-size:11px;color:var(--dim);letter-spacing:.5px}
+.jc-b{padding:28px 34px 38px}
+.sec{margin-bottom:26px}
+.sec-t{font-size:9px;text-transform:uppercase;letter-spacing:3px;color:var(--dim);margin-bottom:12px;font-weight:600}
+.desc{font-size:14px;line-height:1.8;color:rgba(232,232,240,0.65)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:6px 14px;border-radius:8px;font-size:11px;font-weight:500}
+.tag.g{background:rgba(102,187,106,0.05);color:#81C784;border:1px solid rgba(102,187,106,0.08)}
+.tag.o{background:rgba(255,152,0,0.05);color:#FFB74D;border:1px solid rgba(255,152,0,0.08)}
+.tag.p{background:rgba(124,77,255,0.05);color:#B388FF;border:1px solid rgba(124,77,255,0.08)}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sbox{background:rgba(255,255,255,0.012);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center}
+.sl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:8px}
+.sv{font-family:'Space Grotesk';font-size:20px;font-weight:600}
+.mrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.025)}
+.mrow:last-child{border:none}
+.ml{font-size:13px;color:var(--dim);flex:1}
+.mv{font-size:14px;font-weight:500}
+.tbar{width:80px;height:5px;background:rgba(255,255,255,0.025);border-radius:3px;overflow:hidden}
+.tf{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.pbtn{display:block;width:100%;padding:18px;font-size:14px;font-family:'Space Grotesk';font-weight:600;background:rgba(244,197,66,0.04);border:1px solid rgba(244,197,66,0.12);border-radius:16px;color:var(--gold);cursor:pointer;transition:all .3s;text-align:center;margin-top:14px}
+.pbtn:hover{background:rgba(244,197,66,0.08);box-shadow:0 8px 32px rgba(244,197,66,0.08);transform:translateY(-1px)}
+
+/* ════════ PATH MODAL ════════ */
+#pm{position:fixed;inset:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(14px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s}
+#pm.v{opacity:1;pointer-events:all}
+.pm-c{width:640px;max-height:84vh;overflow-y:auto;background:var(--panel);border:1px solid var(--border);border-radius:28px;padding:44px;transform:scale(.9) translateY(20px);transition:transform .5s cubic-bezier(.22,1,.36,1);box-shadow:0 40px 120px rgba(0,0,0,0.7)}
+#pm.v .pm-c{transform:scale(1) translateY(0)}
+.pm-t{font-family:'Space Grotesk';font-size:24px;font-weight:600;margin-bottom:6px}
+.pm-s{font-size:14px;color:var(--dim);margin-bottom:34px}
+.ps{display:flex;gap:18px;margin-bottom:28px;position:relative}
+.ps::before{content:'';position:absolute;left:18px;top:42px;bottom:-28px;width:1px;background:linear-gradient(to bottom,rgba(244,197,66,.2),transparent)}
+.ps:last-of-type::before{display:none}
+.psd{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.psd.o{background:linear-gradient(135deg,var(--gold),#D4A017);color:#0a0a0a;box-shadow:0 4px 16px rgba(244,197,66,0.2)}
+.psd.a{background:rgba(79,195,247,0.08);color:var(--blue);border:1.5px solid rgba(79,195,247,0.2)}
+.psd.g{background:rgba(102,187,106,0.08);color:var(--green);border:1.5px solid rgba(102,187,106,0.2)}
+.psc{flex:1;padding-top:5px}
+.psl{font-weight:600;font-size:15px;margin-bottom:5px}
+.psdesc{font-size:13px;color:var(--dim);line-height:1.7}
+.pm-x{display:block;width:100%;padding:16px;font-size:12px;font-family:'Inter';background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:14px;color:var(--text);cursor:pointer;margin-top:14px;transition:all .2s;letter-spacing:1px;text-transform:uppercase}
+.pm-x:hover{background:rgba(255,255,255,0.05)}
+
+@keyframes fu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sh{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+</style>
+</head>
+<body>
+<div id="three-container"></div>
+
+<!-- ═══ SEARCH ═══ -->
+<div class="screen" id="scr-search">
+  <div class="s-logo">MapEmploi présente</div>
+  <h1 class="s-title">StarMap</h1>
+  <p class="s-sub">Votre constellation de réorientation professionnelle</p>
+  <div class="s-wrap">
+    <input type="text" class="s-input" id="si" placeholder="Quel est votre métier actuel ?" autocomplete="off">
+    <div class="ac" id="acl"></div>
+  </div>
+  <button class="s-btn" id="sb" disabled>Continuer</button>
+</div>
+
+<!-- ═══ QUESTIONNAIRE ═══ -->
+<div class="screen hidden" id="scr-quiz">
+  <div class="quiz-container">
+    <div class="quiz-progress" id="qprog"></div>
+
+    <div class="quiz-step" data-step="0">
+      <div class="quiz-q">Qu'est-ce qui vous pousse à changer de métier ?</div>
+      <div class="quiz-hint">Choisissez la raison principale</div>
+      <div class="quiz-options" data-key="motivation" data-multi="false">
+        <div class="quiz-opt" data-val="ennui">😴 Lassitude / ennui</div>
+        <div class="quiz-opt" data-val="salaire">💰 Meilleur salaire</div>
+        <div class="quiz-opt" data-val="sens">🎯 Quête de sens</div>
+        <div class="quiz-opt" data-val="equilibre">⚖️ Équilibre vie pro/perso</div>
+        <div class="quiz-opt" data-val="evolution">📈 Évolution de carrière</div>
+        <div class="quiz-opt" data-val="passion">❤️ Suivre une passion</div>
+      </div>
+    </div>
+
+    <div class="quiz-step" data-step="1">
+      <div class="quiz-q">Qu'est-ce qui compte le plus pour vous ?</div>
+      <div class="quiz-hint">Sélectionnez jusqu'à 3 critères</div>
+      <div class="quiz-options" data-key="priorities" data-multi="true">
+        <div class="quiz-opt multi" data-val="salaire">💵 Rémunération attractive</div>
+        <div class="quiz-opt multi" data-val="creativite">🎨 Créativité</div>
+        <div class="quiz-opt multi" data-val="impact">🌍 Impact social</div>
+        <div class="quiz-opt multi" data-val="autonomie">🏠 Autonomie / télétravail</div>
+        <div class="quiz-opt multi" data-val="securite">🛡️ Sécurité de l'emploi</div>
+        <div class="quiz-opt multi" data-val="equipe">👥 Travail en équipe</div>
+        <div class="quiz-opt multi" data-val="tech">💻 Technologie / innovation</div>
+        <div class="quiz-opt multi" data-val="terrain">🏗️ Travail de terrain</div>
+      </div>
+    </div>
+
+    <div class="quiz-step" data-step="2">
+      <div class="quiz-q">Quel environnement de travail préférez-vous ?</div>
+      <div class="quiz-hint">Choisissez celui qui vous correspond le mieux</div>
+      <div class="quiz-options" data-key="environment" data-multi="false">
+        <div class="quiz-opt" data-val="bureau">🏢 Bureau / open space</div>
+        <div class="quiz-opt" data-val="remote">🏠 100% télétravail</div>
+        <div class="quiz-opt" data-val="terrain">🌿 Extérieur / terrain</div>
+        <div class="quiz-opt" data-val="atelier">🔧 Atelier / usine</div>
+        <div class="quiz-opt" data-val="contact">🤝 Au contact du public</div>
+        <div class="quiz-opt" data-val="mixte">🔀 Hybride / varié</div>
+      </div>
+    </div>
+
+    <div class="quiz-step" data-step="3">
+      <div class="quiz-q">Combien de temps êtes-vous prêt à vous former ?</div>
+      <div class="quiz-hint">Déplacez le curseur</div>
+      <div class="quiz-slider-wrap">
+        <div class="quiz-slider-val" id="slider-val">6 mois</div>
+        <input type="range" class="quiz-slider" id="formation-slider" min="0" max="4" value="1" data-key="formation_time">
+        <div class="quiz-slider-labels"><span>Aucune</span><span>6 mois</span><span>1 an</span><span>2 ans</span><span>3+ ans</span></div>
+      </div>
+    </div>
+
+    <div class="quiz-step" data-step="4">
+      <div class="quiz-q">Quels sont vos points forts ?</div>
+      <div class="quiz-hint">Sélectionnez jusqu'à 3 qualités</div>
+      <div class="quiz-options" data-key="strengths" data-multi="true">
+        <div class="quiz-opt multi" data-val="analytique">🧠 Esprit analytique</div>
+        <div class="quiz-opt multi" data-val="creatif">🎨 Créativité</div>
+        <div class="quiz-opt multi" data-val="relationnel">🤝 Relationnel</div>
+        <div class="quiz-opt multi" data-val="technique">🔧 Technique / manuel</div>
+        <div class="quiz-opt multi" data-val="leader">👑 Leadership</div>
+        <div class="quiz-opt multi" data-val="organise">📋 Organisation / rigueur</div>
+        <div class="quiz-opt multi" data-val="empathie">💝 Empathie / écoute</div>
+        <div class="quiz-opt multi" data-val="pedagogie">📚 Pédagogie</div>
+      </div>
+    </div>
+
+    <div class="quiz-nav">
+      <button class="quiz-nav-btn quiz-back" id="q-back" style="display:none">Retour</button>
+      <button class="quiz-nav-btn quiz-next" id="q-next" disabled>Suivant</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ UI OVERLAYS ═══ -->
+<div id="top-bar">
+  <span class="tb-b">StarMap</span><span class="tb-s">/</span>
+  <span class="tb-j" id="tbj"></span>
+  <div class="tb-tags" id="tbtags"></div>
+  <button class="tb-bk" id="tbb">← Recommencer</button>
+</div>
+<div id="legend">
+  <div class="lg-t">Compatibilité</div>
+  <div class="lg-r"><div class="lg-d" style="background:var(--gold);box-shadow:0 0 10px var(--gold)"></div><span>Excellente (>70%)</span></div>
+  <div class="lg-r"><div class="lg-d" style="background:var(--blue);box-shadow:0 0 6px var(--blue)"></div><span>Bonne (40-70%)</span></div>
+  <div class="lg-r"><div class="lg-d" style="background:#1565C0;box-shadow:0 0 4px #1565C0"></div><span>Exploratoire (<40%)</span></div>
+</div>
+<div id="hint-360">🖱️ Cliquez-glissez pour tourner · Molette pour zoomer</div>
+<div id="tooltip"><div class="tt-n" id="ttn"></div><div class="tt-s" id="tts"></div><div class="tt-se" id="ttse"></div><div class="tt-bar"><div class="tt-f" id="ttf"></div></div></div>
+<div id="jc">
+  <div class="jc-h"><button class="jc-x" id="jcx">×</button><div class="jc-badge" id="jcbg"></div><div class="jc-n" id="jcn"></div><div class="jc-c" id="jcc"></div></div>
+  <div class="jc-b" id="jcb"></div>
+</div>
+<div id="pm"><div class="pm-c" id="pmc"></div></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import*as THREE from'three';
+import{OrbitControls}from'three/addons/controls/OrbitControls.js';
+import{EffectComposer}from'three/addons/postprocessing/EffectComposer.js';
+import{RenderPass}from'three/addons/postprocessing/RenderPass.js';
+import{UnrealBloomPass}from'three/addons/postprocessing/UnrealBloomPass.js';
+
+// ═════════════════════════════════
+// DATA
+// ═════════════════════════════════
+const SC={Tech:{r:79,g:195,b:247},Communication:{r:186,g:104,b:255},Commerce:{r:255,g:167,b:38},"Santé":{r:239,g:83,b:80},Industrie:{r:38,g:198,b:157},"Éducation":{r:255,g:213,b:79},Nature:{r:102,g:187,b:106},"Bâtiment":{r:255,g:138,b:101},Finance:{r:100,g:181,b:246},Transport:{r:171,g:71,b:188},Tourisme:{r:77,g:208,b:225},Spectacle:{r:255,g:110,b:160}};
+const SECTOR_ENV={bureau:["Tech","Communication","Finance"],remote:["Tech","Communication"],terrain:["Nature","Bâtiment","Tourisme"],atelier:["Industrie","Bâtiment"],contact:["Santé","Commerce","Éducation","Tourisme"],mixte:["Tech","Commerce","Transport"]};
+const SECTOR_TRAITS={analytique:["Tech","Finance","Industrie"],creatif:["Communication","Spectacle","Nature"],relationnel:["Commerce","Santé","Éducation","Tourisme"],technique:["Tech","Industrie","Bâtiment"],leader:["Tech","Industrie","Commerce"],organise:["Transport","Industrie","Finance"],empathie:["Santé","Éducation"],pedagogie:["Éducation","Santé","Communication"]};
+
+const DB=[
+  {code:"M1805",name:"Développeur informatique",sector:"Tech",description:"Conçoit et développe des applications logicielles avec divers langages de programmation et frameworks modernes.",competences:["Programmation (Python, JS, Java)","Bases de données SQL/NoSQL","Frameworks web (React, Angular)","Git & versioning","Méthodes Agile/Scrum","Tests & CI/CD","API REST/GraphQL","Architecture logicielle"],ct:["Résolution de problèmes","Travail en équipe","Veille technologique","Communication","Adaptabilité"],sal:{j:28000,c:38000,s:52000},t:.85,td:"hausse",fm:["BTS SIO","BUT Informatique","Master Informatique","École d'ingénieur"]},
+  {code:"M1802",name:"Expert systèmes et réseaux",sector:"Tech",description:"Conçoit, administre et sécurise les infrastructures informatiques et réseaux.",competences:["Admin systèmes (Windows/Linux)","Réseaux (TCP/IP, VPN)","Cloud (AWS, Azure)","Cybersécurité","Virtualisation","Scripting (Bash, PowerShell)","Monitoring","PRA/PCA"],ct:["Analyse complexe","Rigueur","Communication technique","Veille techno"],sal:{j:35000,c:47000,s:63000},t:.8,td:"hausse",fm:["BTS SIO","BUT Réseaux","Master Info"]},
+  {code:"M1801",name:"Admin systèmes d'information",sector:"Tech",description:"Gère et maintient le SI d'une organisation.",competences:["Administration serveurs","Gestion BDD","Sécurité SI","Monitoring","Virtualisation","Cloud","Gestion accès","Documentation"],ct:["Organisation","Rigueur","Communication","Gestion priorités"],sal:{j:32000,c:43000,s:58000},t:.75,td:"stable",fm:["BTS SIO","Licence pro SI","Master Informatique"]},
+  {code:"M1803",name:"DSI - Directeur des SI",sector:"Tech",description:"Définit et pilote la stratégie numérique de l'entreprise.",competences:["Stratégie numérique","Management IT","Budget","Architecture SI","Gouvernance données","Négociation","Gestion projets","RGPD"],ct:["Leadership","Vision stratégique","Communication","Gestion changement"],sal:{j:60000,c:80000,s:110000},t:.7,td:"hausse",fm:["Master Info","École ingé + MBA"]},
+  {code:"M1806",name:"Consultant fonctionnel SI",sector:"Tech",description:"Accompagne les entreprises dans l'optimisation de leurs SI.",competences:["Analyse besoins métier","Paramétrage ERP/CRM","Conduite changement","Spécifications","Tests/recette","Formation users","Gestion projet","Connaissance métier"],ct:["Communication","Écoute","Synthèse","Pédagogie","Adaptabilité"],sal:{j:33000,c:45000,s:62000},t:.7,td:"stable",fm:["Master MIAGE"]},
+  {code:"M1810",name:"Technicien exploitation IT",sector:"Tech",description:"Assure le fonctionnement quotidien des systèmes informatiques.",competences:["Exploitation systèmes","Support N1/N2","Gestion incidents","Maintenance préventive","Ordonnancement","Sauvegarde","Monitoring","Documentation"],ct:["Réactivité","Rigueur","Communication","Gestion stress"],sal:{j:24000,c:30000,s:38000},t:.6,td:"stable",fm:["BTS SIO"]},
+  {code:"I1401",name:"Technicien maintenance info",sector:"Tech",description:"Installe, configure et répare les équipements informatiques.",competences:["Diagnostic matériel","Installation systèmes","Dépannage","Config réseau","Support utilisateur","Gestion parc","Sécurité postes","Inventaire IT"],ct:["Patience","Pédagogie","Autonomie","Méthode"],sal:{j:22000,c:28000,s:35000},t:.6,td:"stable",fm:["Bac pro SN","BTS SIO"]},
+  {code:"E1101",name:"Community manager",sector:"Communication",description:"Anime les communautés en ligne et développe la présence digitale.",competences:["Réseaux sociaux","Création contenu","Planification éditoriale","Analyse KPI","SEO/SEM","PAO & retouche","Pub digitale","Veille e-réputation"],ct:["Créativité","Relationnel","Réactivité","Analyse","Adaptabilité"],sal:{j:30000,c:42000,s:58000},t:.6,td:"hausse",fm:["BTS Communication","Master Communication"]},
+  {code:"E1103",name:"Chargé relations publiques",sector:"Communication",description:"Développe l'image et la réputation d'une organisation.",competences:["Relations presse","Organisation événements","Communiqués","Gestion crise","Lobbying","Storytelling","Réseaux influence","Veille médiatique"],ct:["Communication","Diplomatie","Réseau","Créativité"],sal:{j:28000,c:40000,s:55000},t:.5,td:"stable",fm:["Master Communication"]},
+  {code:"E1104",name:"Concepteur contenus multimédia",sector:"Communication",description:"Crée des contenus visuels, vidéo et interactifs.",competences:["Montage vidéo","Design graphique","Motion design","UX/UI Design","Photographie","Sound design","Animation 2D/3D","Web design"],ct:["Créativité","Sens esthétique","Curiosité technique","Gestion projet"],sal:{j:26000,c:36000,s:50000},t:.6,td:"hausse",fm:["École d'art","Master Création numérique"]},
+  {code:"E1205",name:"Designer graphique",sector:"Communication",description:"Crée identités visuelles et supports de communication.",competences:["Suite Adobe","Typographie","Direction artistique","Identité visuelle","Print & web","UI/UX design","Mise en page","Branding"],ct:["Créativité","Sens du détail","Communication visuelle","Adaptabilité"],sal:{j:25000,c:35000,s:48000},t:.55,td:"stable",fm:["École art/design","DN MADE"]},
+  {code:"D1106",name:"Vendeur en épicerie",sector:"Commerce",description:"Accueille, conseille et sert la clientèle en commerce alimentaire.",competences:["Techniques de vente","Gestion stocks","Caisse/TPV","Produits alimentaires","Merchandising","Hygiène alimentaire","Commandes","Étiquetage"],ct:["Sens du contact","Résistance physique","Organisation","Adaptabilité"],sal:{j:22500,c:25500,s:30000},t:.7,td:"stable",fm:["CAP Commerce","Bac pro Commerce"]},
+  {code:"D1401",name:"Assistant commercial",sector:"Commerce",description:"Assiste la force de vente en gestion administrative.",competences:["Gestion administrative","CRM","Suivi commandes","Facturation","Relation client","Prospection tél","Reporting","Bureautique avancée"],ct:["Organisation","Rigueur","Communication","Polyvalence"],sal:{j:24000,c:30000,s:36000},t:.6,td:"stable",fm:["BTS NDRC","BTS MCO"]},
+  {code:"D1501",name:"Animateur des ventes",sector:"Commerce",description:"Dynamise les ventes par animations et promotions.",competences:["Animation commerciale","Vente","Négociation","Merchandising","Analyse ventes","Événementiel","Budget","Marketing opérationnel"],ct:["Dynamisme","Persuasion","Créativité","Autonomie"],sal:{j:25000,c:32000,s:42000},t:.55,td:"stable",fm:["BTS MCO","BTS NDRC"]},
+  {code:"J1506",name:"Infirmier soins généraux",sector:"Santé",description:"Dispense soins préventifs, curatifs et palliatifs.",competences:["Administration médicaments","Soins techniques","Surveillance vitaux","Éducation thérapeutique","Dispositifs médicaux","Dossiers soins","Protocoles hygiène","Évaluation douleur"],ct:["Empathie","Gestion stress","Travail en équipe","Communication","Responsabilité"],sal:{j:29000,c:37000,s:48000},t:.85,td:"hausse",fm:["Diplôme État infirmier"]},
+  {code:"J1501",name:"Aide-soignant",sector:"Santé",description:"Assiste les patients dans la vie quotidienne.",competences:["Soins hygiène/confort","Aide mobilité","Observation patient","Distribution repas","Entretien","Paramètres vitaux","Fin de vie","Prévention escarres"],ct:["Empathie","Patience","Résistance physique","Travail en équipe"],sal:{j:22000,c:26000,s:32000},t:.9,td:"hausse",fm:["DEAS"]},
+  {code:"J1505",name:"Infirmier de prévention",sector:"Santé",description:"Prévention et promotion de la santé.",competences:["Éducation santé","Dépistage","Vaccination","Animation groupes","Campagnes prévention","Épidémiologie","Santé travail","Santé publique"],ct:["Pédagogie","Communication","Autonomie","Écoute"],sal:{j:28000,c:35000,s:45000},t:.7,td:"stable",fm:["DE Infirmier + spé"]},
+  {code:"J1502",name:"Cadre de santé",sector:"Santé",description:"Manage une équipe soignante en milieu hospitalier.",competences:["Management soignant","Organisation soins","Plannings","Qualité/sécurité","Budget","Formation","Protocoles","Coordination"],ct:["Leadership","Organisation","Communication","Gestion conflits"],sal:{j:35000,c:45000,s:55000},t:.7,td:"stable",fm:["IFCS","Master Management santé"]},
+  {code:"H2502",name:"Responsable production",sector:"Industrie",description:"Pilote une unité de production industrielle.",competences:["Pilotage processus","Management équipes","Planification","Lean/Six Sigma","Qualité","Maintenance","Budget","Sécurité"],ct:["Leadership","Résolution problèmes","Réactivité","Travail transversal"],sal:{j:45000,c:57000,s:72000},t:.7,td:"stable",fm:["Master ingénierie","École ingénieur"]},
+  {code:"H2504",name:"Chef d'équipe industrie",sector:"Industrie",description:"Encadre une équipe de production.",competences:["Encadrement","Suivi production","Qualité","Plannings","Sécurité","Maintenance N1","Reporting","Amélioration continue"],ct:["Autorité","Communication","Organisation","Esprit d'équipe"],sal:{j:28000,c:35000,s:42000},t:.65,td:"stable",fm:["BTS industriel"]},
+  {code:"H1206",name:"Ingénieur R&D industrie",sector:"Industrie",description:"R&D pour innovation industrielle.",competences:["Méthodes R&D","Conception","Prototypage","Tests","CAO/DAO","Matériaux","Veille techno","Propriété intellectuelle"],ct:["Innovation","Rigueur scientifique","Travail en équipe","Curiosité"],sal:{j:36000,c:48000,s:65000},t:.7,td:"hausse",fm:["École d'ingénieur","Doctorat"]},
+  {code:"H1402",name:"Ingénieur méthodes",sector:"Industrie",description:"Optimise méthodes et processus de production.",competences:["Analyse processus","Optimisation","Lean manufacturing","Projet industriel","Ergonomie","Standards","Chiffrage","Industrialisation"],ct:["Analyse","Méthode","Communication","Force de proposition"],sal:{j:34000,c:45000,s:60000},t:.65,td:"stable",fm:["École d'ingénieur"]},
+  {code:"I1304",name:"Technicien maintenance industrielle",sector:"Industrie",description:"Maintenance préventive et curative des équipements.",competences:["Diagnostic pannes","Électricité industrielle","Mécanique","Automatismes","Hydraulique","Soudure","Lecture plans","GMAO"],ct:["Logique","Réactivité","Autonomie","Sécurité"],sal:{j:24000,c:32000,s:40000},t:.8,td:"stable",fm:["BTS Maintenance industrielle"]},
+  {code:"K2104",name:"Surveillant milieu scolaire",sector:"Éducation",description:"Surveillance et encadrement des élèves.",competences:["Surveillance élèves","Contrôle absences","Gestion conflits","Règlement intérieur","Logiciels scolaires","Rapports incidents","Premiers secours","Animation"],ct:["Autorité","Écoute","Gestion stress","Communication","Travail en équipe"],sal:{j:20000,c:22500,s:25500},t:.7,td:"stable",fm:["Baccalauréat"]},
+  {code:"K1801",name:"Conseiller insertion pro",sector:"Éducation",description:"Accompagne dans l'insertion professionnelle.",competences:["Techniques entretien","Marché emploi","Orientation","Dispositifs formation","CV/lettres","Bilan compétences","Réseau entreprises","Droit travail"],ct:["Écoute active","Empathie","Pédagogie","Patience","Réseau"],sal:{j:24000,c:30000,s:38000},t:.6,td:"stable",fm:["Titre pro CIP"]},
+  {code:"K1207",name:"Éducateur spécialisé",sector:"Éducation",description:"Accompagne des personnes en difficulté sociale.",competences:["Accompagnement éducatif","Projet personnalisé","Médiation","Animation groupe","Analyse pratiques","Écrits pro","Réseau","Protection enfance"],ct:["Écoute","Empathie","Patience","Résilience","Engagement"],sal:{j:24000,c:30000,s:37000},t:.7,td:"stable",fm:["DEES"]},
+  {code:"K2111",name:"Formateur",sector:"Éducation",description:"Conçoit et anime des formations pour adultes.",competences:["Ingénierie pédagogique","Animation","Supports pédagogiques","Évaluation","E-learning","Techniques pédago","Gestion groupe","Individualisation"],ct:["Pédagogie","Adaptabilité","Communication","Créativité"],sal:{j:26000,c:34000,s:45000},t:.6,td:"stable",fm:["Titre pro FPA"]},
+  {code:"A1203",name:"Agent espaces verts",sector:"Nature",description:"Entretient et aménage les espaces verts.",competences:["Taille/élagage","Outils motorisés","Végétaux","Plantation","Arrosage","Maladies plantes","Phytosanitaires","Engins légers"],ct:["Résistance physique","Autonomie","Observation","Sécurité","Adaptabilité"],sal:{j:22500,c:26000,s:31000},t:.7,td:"stable",fm:["CAP Jardinier"]},
+  {code:"A1206",name:"Concepteur paysagiste",sector:"Nature",description:"Conçoit l'aménagement d'espaces extérieurs.",competences:["Conception paysagère","CAO/DAO","Botanique","Aménagement","Urbanisme","Métrés","Gestion projet","Sols"],ct:["Créativité","Communication","Gestion projet","Résolution problèmes"],sal:{j:28000,c:38000,s:52000},t:.7,td:"hausse",fm:["BTSA Paysage","ENSP Versailles"]},
+  {code:"F1104",name:"Dessinateur-projeteur BTP",sector:"Bâtiment",description:"Plans techniques pour projets de construction.",competences:["CAO/DAO (AutoCAD, Revit)","Plans architecturaux","Techniques constructives","Normes construction","Métrés","Dessin technique","BIM","Urbanisme"],ct:["Rigueur","Analyse","Travail en équipe","Organisation"],sal:{j:28500,c:38000,s:52000},t:.7,td:"stable",fm:["BTS Bâtiment","BUT Génie Civil"]},
+  {code:"F1101",name:"Architecte du bâtiment",sector:"Bâtiment",description:"Conçoit des bâtiments alliant technique et esthétique.",competences:["Conception architecturale","CAO/BIM","Réglementation","Direction chantier","Urbanisme","Développement durable","Budget","Consultation"],ct:["Créativité","Vision spatiale","Communication","Gestion projet"],sal:{j:32000,c:45000,s:65000},t:.6,td:"stable",fm:["HMONP","ENSA"]},
+  {code:"F1201",name:"Conducteur de travaux",sector:"Bâtiment",description:"Dirige et coordonne les travaux sur chantier.",competences:["Direction chantier","Planification","Sous-traitants","Budget","Sécurité","Lecture plans","Négociation","Qualité"],ct:["Leadership","Organisation","Réactivité","Négociation"],sal:{j:35000,c:48000,s:65000},t:.75,td:"stable",fm:["École ingé BTP"]},
+  {code:"C1102",name:"Conseiller en assurances",sector:"Finance",description:"Conseille sur les produits d'assurance.",competences:["Produits assurance","Analyse risques","Droit assurances","Négociation","Gestion sinistres","Devoir conseil","CRM","Réglementation"],ct:["Sens commercial","Écoute","Pédagogie","Rigueur"],sal:{j:26000,c:35000,s:48000},t:.55,td:"stable",fm:["BTS Assurance"]},
+  {code:"N1301",name:"Responsable logistique",sector:"Transport",description:"Organise et optimise les flux de marchandises.",competences:["Supply chain","Stocks","Transport","WMS/TMS","Optimisation flux","Transporteurs","Douanes","KPI logistiques"],ct:["Organisation","Analyse","Négociation","Réactivité"],sal:{j:32000,c:42000,s:58000},t:.7,td:"hausse",fm:["BTS Transport","Master Supply Chain"]},
+  {code:"G1101",name:"Agent accueil touristique",sector:"Tourisme",description:"Accueille et informe les touristes.",competences:["Accueil/info","Langues","Territoire","Billetterie","Réservations","Contenus touristiques","Outils numériques","Promotion"],ct:["Sens accueil","Sourire","Polyvalence","Curiosité"],sal:{j:21000,c:25000,s:30000},t:.5,td:"stable",fm:["BTS Tourisme"]},
+  {code:"L1302",name:"Producteur de film",sector:"Spectacle",description:"Finance et supervise la production audiovisuelle.",competences:["Montage financier","Financements","Budget","Droit AV","Coordination","Contrats","Distribution","Marketing ciné"],ct:["Vision créative","Entrepreneuriat","Négociation","Gestion risque"],sal:{j:28000,c:45000,s:80000},t:.3,td:"stable",fm:["FEMIS","Master Production AV"]}
+];
+
+// ═════════════════════════════════
+// PROXIMITY WITH QUIZ BOOST
+// ═════════════════════════════════
+let quizAnswers={};
+function computeProx(srcCode){
+  const src=DB.find(j=>j.code===srcCode);if(!src)return[];
+  return DB.filter(j=>j.code!==srcCode).map(j=>{
+    let s=0;
+    if(j.sector===src.sector)s+=.2;
+    const st=src.ct.filter(c=>j.ct.some(jc=>jc.toLowerCase().includes(c.toLowerCase().split(' ')[0])||c.toLowerCase().includes(jc.toLowerCase().split(' ')[0])));
+    s+=Math.min(st.length*.07,.3);
+    const sc2=src.competences.filter(c=>j.competences.some(jc=>jc.toLowerCase().includes(c.toLowerCase().split('(')[0].trim().split(' ').slice(0,2).join(' '))));
+    s+=Math.min(sc2.length*.05,.2);
+    if(j.code[0]===src.code[0])s+=.1;
+    const sd=Math.abs(j.sal.c-src.sal.c)/src.sal.c;if(sd<.2)s+=.08;
+
+    // Quiz boosts
+    if(quizAnswers.environment){
+      const envSectors=SECTOR_ENV[quizAnswers.environment]||[];
+      if(envSectors.includes(j.sector))s+=.1;
+    }
+    if(quizAnswers.strengths){
+      for(const str of quizAnswers.strengths){
+        const matchSectors=SECTOR_TRAITS[str]||[];
+        if(matchSectors.includes(j.sector))s+=.05;
+      }
+    }
+    if(quizAnswers.priorities){
+      if(quizAnswers.priorities.includes('salaire')&&j.sal.c>src.sal.c*1.1)s+=.08;
+      if(quizAnswers.priorities.includes('securite')&&j.t>=.7)s+=.06;
+      if(quizAnswers.priorities.includes('creativite')&&['Communication','Spectacle','Nature'].includes(j.sector))s+=.06;
+      if(quizAnswers.priorities.includes('impact')&&['Santé','Éducation'].includes(j.sector))s+=.06;
+      if(quizAnswers.priorities.includes('tech')&&['Tech'].includes(j.sector))s+=.06;
+      if(quizAnswers.priorities.includes('terrain')&&['Nature','Bâtiment','Industrie'].includes(j.sector))s+=.06;
+    }
+    if(quizAnswers.motivation==='salaire'&&j.sal.c>src.sal.c)s+=.06;
+    if(quizAnswers.motivation==='sens'&&['Santé','Éducation','Nature'].includes(j.sector))s+=.06;
+
+    s+=(Math.sin(src.code.charCodeAt(1)*j.code.charCodeAt(1))*.5+.5)*.08;
+    return{...j,prox:Math.min(Math.max(s,.05),.98),shared:st.concat(sc2.slice(0,2)),toAcq:j.competences.filter(c=>!src.competences.some(x=>x.toLowerCase().includes(c.toLowerCase().split('(')[0].trim().split(' ').slice(0,2).join(' ')))).slice(0,5)};
+  }).sort((a,b)=>b.prox-a.prox);
+}
+
+// ═════════════════════════════════
+// THREE.JS SCENE
+// ═════════════════════════════════
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,8000);
+camera.position.set(0,20,120);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+document.getElementById('three-container').appendChild(renderer.domElement);
+
+// OrbitControls — full 360° view
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=.04;
+controls.rotateSpeed=.4;controls.zoomSpeed=.8;
+controls.minDistance=15;controls.maxDistance=500;
+controls.enablePan=false;
+controls.autoRotate=true;controls.autoRotateSpeed=.15;
+
+// Bloom
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),1.6,.5,.2);
+composer.addPass(bloom);
+
+// Star texture (high quality)
+function mkTex(size,spikes){
+  const c=document.createElement('canvas');c.width=size;c.height=size;const ctx=c.getContext('2d');
+  const h=size/2;
+  // Core glow
+  const g=ctx.createRadialGradient(h,h,0,h,h,h);
+  g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.08,'rgba(255,250,240,0.9)');
+  g.addColorStop(.2,'rgba(200,220,255,0.5)');g.addColorStop(.4,'rgba(100,150,255,0.15)');
+  g.addColorStop(.7,'rgba(50,80,200,0.03)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,size,size);
+  // Diffraction spikes
+  if(spikes){
+    ctx.globalCompositeOperation='screen';
+    for(let a=0;a<4;a++){
+      ctx.save();ctx.translate(h,h);ctx.rotate(a*Math.PI/4+Math.PI/8);
+      const lg=ctx.createLinearGradient(0,0,h*.85,0);
+      lg.addColorStop(0,'rgba(255,255,255,0.6)');lg.addColorStop(.3,'rgba(200,220,255,0.15)');lg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=lg;ctx.beginPath();ctx.moveTo(0,-.6);ctx.lineTo(h*.85,0);ctx.lineTo(0,.6);ctx.fill();
+      const lg2=ctx.createLinearGradient(0,0,-h*.85,0);
+      lg2.addColorStop(0,'rgba(255,255,255,0.6)');lg2.addColorStop(.3,'rgba(200,220,255,0.15)');lg2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=lg2;ctx.beginPath();ctx.moveTo(0,-.6);ctx.lineTo(-h*.85,0);ctx.lineTo(0,.6);ctx.fill();
+      ctx.restore();
+    }
+  }
+  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
+}
+const starTex=mkTex(256,true);const softTex=mkTex(128,false);
+
+// ═════ BACKGROUND SKY ═════
+// 12000 background stars in a giant sphere
+const bgN=12000;const bgGeo=new THREE.BufferGeometry();
+const bgP=new Float32Array(bgN*3),bgC=new Float32Array(bgN*3),bgS=new Float32Array(bgN),bgTw=new Float32Array(bgN);
+const cols=[[1,.97,.92],[.78,.82,1],[1,.88,.78],[.7,.78,1],[.9,.85,1]];
+for(let i=0;i<bgN;i++){
+  const r=400+Math.random()*3500;const th=Math.random()*Math.PI*2;const ph=Math.acos(2*Math.random()-1);
+  bgP[i*3]=r*Math.sin(ph)*Math.cos(th);bgP[i*3+1]=r*Math.sin(ph)*Math.sin(th);bgP[i*3+2]=r*Math.cos(ph);
+  const c=cols[Math.floor(Math.random()*cols.length)];
+  bgC[i*3]=c[0];bgC[i*3+1]=c[1];bgC[i*3+2]=c[2];
+  bgS[i]=Math.random()<.93?.4+Math.random()*1.5:Math.random()<.98?2+Math.random()*3:4+Math.random()*5;
+  bgTw[i]=Math.random()*6.28;
+}
+bgGeo.setAttribute('position',new THREE.BufferAttribute(bgP,3));
+bgGeo.setAttribute('color',new THREE.BufferAttribute(bgC,3));
+bgGeo.setAttribute('size',new THREE.BufferAttribute(bgS,1));
+bgGeo.setAttribute('twinkleOff',new THREE.BufferAttribute(bgTw,1));
+const bgMat=new THREE.ShaderMaterial({
+  uniforms:{uTex:{value:softTex},uBigTex:{value:starTex},uTime:{value:0}},
+  vertexShader:`
+    attribute float size;attribute float twinkleOff;
+    varying vec3 vCol;varying float vSz;
+    uniform float uTime;
+    void main(){
+      vCol=color;vSz=size;
+      vec4 mv=modelViewMatrix*vec4(position,1.0);
+      float tw=sin(uTime*(.8+size*.3)+twinkleOff)*.3+.7;
+      gl_PointSize=size*tw*(350.0/(-mv.z));
+      gl_Position=projectionMatrix*mv;
+    }`,
+  fragmentShader:`
+    uniform sampler2D uTex;uniform sampler2D uBigTex;
+    varying vec3 vCol;varying float vSz;
+    void main(){
+      vec4 t=vSz>3.0?texture2D(uBigTex,gl_PointCoord):texture2D(uTex,gl_PointCoord);
+      float a=t.a*(vSz>3.0?.95:vSz>1.5?.6:.35);
+      gl_FragColor=vec4(vCol*t.rgb,a);
+    }`,
+  transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,vertexColors:true
+});
+scene.add(new THREE.Points(bgGeo,bgMat));
+
+// Milky way band + cosmic nebulae distributed across the full sky sphere
+const nebulaColors=[
+  [25,15,50],[15,20,45],[30,10,40],[10,25,50],[20,15,55],
+  [35,12,45],[12,18,55],[22,8,48],[18,28,42],[28,18,52],
+  [8,15,38],[14,22,32],[20,12,58],[32,14,36],[10,18,48],
+  [16,10,42],[24,20,38],[18,14,50],[12,20,55],[26,16,44]
+];
+// Main milky way band: 8 large nebulae forming a great circle
+for(let n=0;n<8;n++){
+  const c=document.createElement('canvas');c.width=512;c.height=512;const ctx=c.getContext('2d');
+  for(let i=0;i<10;i++){
+    const x=100+Math.random()*312,y=100+Math.random()*312,r=60+Math.random()*200;
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    const rgb=nebulaColors[n%nebulaColors.length];
+    g.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.14)`);g.addColorStop(.5,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.05)`);g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,512,512);
+  }
+  const tex=new THREE.CanvasTexture(c);
+  const geo=new THREE.PlaneGeometry(700+Math.random()*500,500+Math.random()*400);
+  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(geo,mat);
+  // Distribute along a great circle (milky way band) tilted 30°
+  const bAng=(n/8)*Math.PI*2+Math.random()*.3;
+  const bR=350+Math.random()*300;
+  const tilt=0.52; // ~30° tilt
+  mesh.position.set(
+    Math.cos(bAng)*bR,
+    Math.sin(bAng)*bR*Math.sin(tilt)+(Math.random()-.5)*120,
+    Math.sin(bAng)*bR*Math.cos(tilt)+(Math.random()-.5)*120
+  );
+  mesh.lookAt(0,0,0);
+  mesh.rotation.z=Math.random()*Math.PI;
+  scene.add(mesh);
+}
+// Scattered nebulae across full sphere for uniform ambiance
+for(let n=0;n<14;n++){
+  const c=document.createElement('canvas');c.width=512;c.height=512;const ctx=c.getContext('2d');
+  for(let i=0;i<6;i++){
+    const x=128+Math.random()*256,y=128+Math.random()*256,r=100+Math.random()*160;
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    const rgb=nebulaColors[(n+8)%nebulaColors.length];
+    const alpha=0.04+Math.random()*0.06;
+    g.addColorStop(0,`rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`);g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,512,512);
+  }
+  const tex=new THREE.CanvasTexture(c);
+  const geo=new THREE.PlaneGeometry(400+Math.random()*600,400+Math.random()*600);
+  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(geo,mat);
+  // Uniform distribution on sphere
+  const th2=Math.random()*Math.PI*2;
+  const ph2=Math.acos(2*Math.random()-1);
+  const nR=300+Math.random()*400;
+  mesh.position.set(nR*Math.sin(ph2)*Math.cos(th2),nR*Math.sin(ph2)*Math.sin(th2),nR*Math.cos(ph2));
+  mesh.lookAt(0,0,0);
+  mesh.rotation.z=Math.random()*Math.PI*2;
+  scene.add(mesh);
+}
+// Subtle ambient cosmic glow sphere (prevents any direction from being pure black)
+{
+  const ambC=document.createElement('canvas');ambC.width=256;ambC.height=256;const actx=ambC.getContext('2d');
+  const ambG=actx.createRadialGradient(128,128,0,128,128,128);
+  ambG.addColorStop(0,'rgba(12,8,28,0.25)');ambG.addColorStop(.5,'rgba(8,6,20,0.12)');ambG.addColorStop(1,'rgba(4,3,12,0.04)');
+  actx.fillStyle=ambG;actx.fillRect(0,0,256,256);
+  const ambTex=new THREE.CanvasTexture(ambC);
+  const ambGeo=new THREE.SphereGeometry(2800,32,32);
+  const ambMat=new THREE.MeshBasicMaterial({map:ambTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.BackSide});
+  scene.add(new THREE.Mesh(ambGeo,ambMat));
+}
+
+// ═════ CONSTELLATION ═════
+let cGroup=new THREE.Group();scene.add(cGroup);
+let starMeshes=[],lineMeshes=[],centralMesh=null,jobData=[],centralJob=null;
+let isActive=false,animP=0,hovered3D=null,selected3D=null;
+const ray=new THREE.Raycaster();ray.params.Points.threshold=2.5;const mPos=new THREE.Vector2();
+
+function starCol(p,sec){
+  if(p>=.7)return new THREE.Color(.96,.77,.26);
+  const c=SC[sec]||{r:79,g:195,b:247};
+  const f=p>=.5?1:p>=.3?.55:.25;
+  return new THREE.Color(c.r/255*f,c.g/255*f,c.b/255*f);
+}
+function buildConst(srcCode){
+  while(cGroup.children.length)cGroup.remove(cGroup.children[0]);
+  starMeshes=[];lineMeshes=[];
+  const res=computeProx(srcCode),src=DB.find(j=>j.code===srcCode);
+  centralJob={...src,prox:1,shared:[],toAcq:[]};jobData=res.slice(0,28);
+
+  // Central
+  const cg=new THREE.BufferGeometry();cg.setAttribute('position',new THREE.BufferAttribute(new Float32Array([0,0,0]),3));
+  const cm=new THREE.ShaderMaterial({
+    uniforms:{uTex:{value:starTex},uTime:{value:0},uSc:{value:1}},
+    vertexShader:`uniform float uTime,uSc;void main(){vec4 mv=modelViewMatrix*vec4(position,1.0);float p=sin(uTime*1.8)*.12+.88;gl_PointSize=70.0*uSc*p*(300.0/(-mv.z));gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`uniform sampler2D uTex;void main(){vec4 t=texture2D(uTex,gl_PointCoord);gl_FragColor=vec4(vec3(.96,.77,.26)*t.rgb*1.6,t.a*.97);}`,
+    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending
+  });
+  centralMesh=new THREE.Points(cg,cm);centralMesh.userData={job:centralJob,ctr:true};
+  cGroup.add(centralMesh);starMeshes.push(centralMesh);
+
+  // Stars in 3D sphere
+  jobData.forEach((j,i)=>{
+    const tier=j.prox>=.6?0:j.prox>=.35?1:2;
+    const mnR=[18,34,46][tier],mxR=[30,42,56][tier];
+    const ang=(i/jobData.length)*Math.PI*2+(Math.random()-.5)*.6;
+    const elev=(Math.random()-.5)*1.2;
+    const rad=mnR+Math.random()*(mxR-mnR);
+    const x=Math.cos(ang)*rad*Math.cos(elev);
+    const y=Math.sin(elev)*rad*.6;
+    const z=Math.sin(ang)*rad*Math.cos(elev);
+
+    const g2=new THREE.BufferGeometry();g2.setAttribute('position',new THREE.BufferAttribute(new Float32Array([x,y,z]),3));
+    const col=starCol(j.prox,j.sector);
+    const sz=8+j.prox*32;
+    const m2=new THREE.ShaderMaterial({
+      uniforms:{uTex:{value:starTex},uTime:{value:0},uCol:{value:col},uSz:{value:sz},uSc:{value:1}},
+      vertexShader:`uniform float uTime,uSz,uSc;void main(){vec4 mv=modelViewMatrix*vec4(position,1.0);float tw=sin(uTime*(2.+position.x*.2)+position.z)*.22+.78;gl_PointSize=uSz*uSc*tw*(300.0/(-mv.z));gl_Position=projectionMatrix*mv;}`,
+      fragmentShader:`uniform sampler2D uTex;uniform vec3 uCol;void main(){vec4 t=texture2D(uTex,gl_PointCoord);vec3 c=mix(vec3(1.),uCol,.45)*t.rgb;gl_FragColor=vec4(c,t.a*.92);}`,
+      transparent:true,depthWrite:false,blending:THREE.AdditiveBlending
+    });
+    const mesh=new THREE.Points(g2,m2);mesh.userData={job:j,ctr:false};
+    cGroup.add(mesh);starMeshes.push(mesh);
+
+    // Line to center
+    const lg=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(x,y,z)]);
+    const lm=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:j.prox*.2,blending:THREE.AdditiveBlending});
+    const line=new THREE.Line(lg,lm);line.userData={to:j};cGroup.add(line);lineMeshes.push(line);
+  });
+  // Sector lines
+  for(let i=0;i<starMeshes.length;i++)for(let k=i+1;k<starMeshes.length;k++){
+    const a=starMeshes[i],b=starMeshes[k];if(a.userData.ctr||b.userData.ctr)continue;
+    if(a.userData.job.sector===b.userData.job.sector){
+      const pA=new THREE.Vector3().fromBufferAttribute(a.geometry.attributes.position,0);
+      const pB=new THREE.Vector3().fromBufferAttribute(b.geometry.attributes.position,0);
+      if(pA.distanceTo(pB)<28){
+        const lg2=new THREE.BufferGeometry().setFromPoints([pA,pB]);
+        const ap=(a.userData.job.prox+b.userData.job.prox)/2;
+        const lm2=new THREE.LineBasicMaterial({color:starCol(ap,a.userData.job.sector),transparent:true,opacity:ap*.1,blending:THREE.AdditiveBlending});
+        cGroup.add(new THREE.Line(lg2,lm2));
+      }
+    }
+  }
+  isActive=true;animP=0;cGroup.scale.set(.01,.01,.01);
+  controls.target.set(0,0,0);controls.minDistance=15;controls.maxDistance=200;
+  camera.position.set(0,20,80);
+}
+
+// Interaction
+renderer.domElement.addEventListener('mousemove',e=>{
+  mPos.x=(e.clientX/innerWidth)*2-1;mPos.y=-(e.clientY/innerHeight)*2+1;
+  if(!isActive)return;
+  ray.setFromCamera(mPos,camera);
+  const h=ray.intersectObjects(starMeshes);
+  const star=h.length?h[0].object:null;
+  hovered3D=star&&!star.userData.ctr?star:null;
+  renderer.domElement.style.cursor=hovered3D?'pointer':'';
+  const tt=document.getElementById('tooltip');
+  if(hovered3D){
+    const j=hovered3D.userData.job;tt.classList.add('v');
+    tt.style.left=(e.clientX+20)+'px';tt.style.top=(e.clientY-14)+'px';
+    document.getElementById('ttn').textContent=j.name;
+    document.getElementById('tts').textContent=`Compatibilité : ${Math.round(j.prox*100)}%`;
+    document.getElementById('ttse').textContent=j.sector;
+    const sc=SC[j.sector]||{r:150,g:150,b:200};
+    const f=document.getElementById('ttf');f.style.width=Math.round(j.prox*100)+'%';f.style.background=`rgb(${sc.r},${sc.g},${sc.b})`;
+  }else tt.classList.remove('v');
+});
+renderer.domElement.addEventListener('click',()=>{
+  if(!isActive||!hovered3D)return;
+  selected3D=hovered3D;showCard(hovered3D.userData.job,centralJob);
+  starMeshes.forEach(m=>{if(m.material.uniforms?.uSc)m.material.uniforms.uSc.value=m===selected3D?1.6:1});
+  lineMeshes.forEach(l=>{if(l.userData?.to===selected3D?.userData.job)l.material.opacity=.5});
+});
+
+// Animate
+const clock=new THREE.Clock();
+(function anim(){
+  requestAnimationFrame(anim);
+  const t=clock.getElapsedTime();
+  bgMat.uniforms.uTime.value=t;
+  controls.update();
+  if(isActive){
+    if(animP<1)animP+=.008;
+    cGroup.scale.setScalar(1-Math.pow(1-Math.min(animP,1),4));
+    starMeshes.forEach(m=>{if(m.material.uniforms?.uTime)m.material.uniforms.uTime.value=t});
+  }
+  composer.render();
+})();
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);
+});
+
+// ═════════════════════════════════
+// QUIZ LOGIC
+// ═════════════════════════════════
+let qStep=0;const QSTEPS=5;
+const steps=document.querySelectorAll('.quiz-step');
+const progDots=document.getElementById('qprog');
+for(let i=0;i<QSTEPS;i++){const d=document.createElement('div');d.className='quiz-dot';progDots.appendChild(d);}
+function updateQuiz(){
+  steps.forEach((s,i)=>s.classList.toggle('active',i===qStep));
+  progDots.querySelectorAll('.quiz-dot').forEach((d,i)=>{d.className='quiz-dot'+(i===qStep?' active':i<qStep?' done':'')});
+  document.getElementById('q-back').style.display=qStep>0?'':'none';
+  const nextBtn=document.getElementById('q-next');
+  nextBtn.textContent=qStep===QSTEPS-1?'Explorer ma constellation ✨':'Suivant';
+  // Check if answered
+  const currentStep=steps[qStep];
+  const opts=currentStep.querySelector('.quiz-options');
+  const slider=currentStep.querySelector('.quiz-slider');
+  if(opts){
+    nextBtn.disabled=!opts.querySelector('.selected');
+  }else if(slider){
+    nextBtn.disabled=false;
+  }
+}
+
+// Options click
+document.querySelectorAll('.quiz-options').forEach(group=>{
+  const multi=group.dataset.multi==='true';
+  group.querySelectorAll('.quiz-opt').forEach(opt=>{
+    opt.addEventListener('click',()=>{
+      if(multi){
+        const sel=group.querySelectorAll('.selected');
+        if(opt.classList.contains('selected')){opt.classList.remove('selected')}
+        else if(sel.length<3){opt.classList.add('selected')}
+      }else{
+        group.querySelectorAll('.quiz-opt').forEach(o=>o.classList.remove('selected'));
+        opt.classList.add('selected');
+      }
+      updateQuiz();
+    });
+  });
+});
+
+// Slider
+const slider=document.getElementById('formation-slider');
+const sliderLabels=['Aucune formation','6 mois','1 an','2 ans','3+ ans'];
+slider.addEventListener('input',()=>{document.getElementById('slider-val').textContent=sliderLabels[slider.value]});
+
+document.getElementById('q-next').addEventListener('click',()=>{
+  // Save answer
+  const step=steps[qStep];
+  const opts=step.querySelector('.quiz-options');
+  if(opts){
+    const key=opts.dataset.key;const multi=opts.dataset.multi==='true';
+    const sel=[...opts.querySelectorAll('.selected')].map(o=>o.dataset.val);
+    quizAnswers[key]=multi?sel:sel[0];
+  }
+  const sl=step.querySelector('.quiz-slider');
+  if(sl){quizAnswers[sl.dataset.key]=parseInt(sl.value)}
+
+  if(qStep<QSTEPS-1){qStep++;updateQuiz()}
+  else launchConst();
+});
+document.getElementById('q-back').addEventListener('click',()=>{if(qStep>0){qStep--;updateQuiz()}});
+
+// ═════════════════════════════════
+// FLOW: Search → Quiz → Constellation
+// ═════════════════════════════════
+let selCode=null;
+const inp=document.getElementById('si'),acEl=document.getElementById('acl'),sbtn=document.getElementById('sb');
+inp.addEventListener('input',()=>{
+  const q=inp.value.toLowerCase().trim();
+  if(q.length<2){acEl.classList.remove('v');sbtn.disabled=true;selCode=null;return}
+  const m=DB.filter(j=>j.name.toLowerCase().includes(q)||j.code.toLowerCase().includes(q)||j.sector.toLowerCase().includes(q)).slice(0,8);
+  if(!m.length){acEl.classList.remove('v');return}
+  acEl.innerHTML='';m.forEach(j=>{
+    const sc=SC[j.sector]||{r:150,g:150,b:200};
+    const it=document.createElement('div');it.className='aci';
+    it.innerHTML=`<span class="dot" style="background:rgb(${sc.r},${sc.g},${sc.b})"></span>${j.name}<span class="code">${j.code}</span>`;
+    it.addEventListener('click',()=>{inp.value=j.name;selCode=j.code;acEl.classList.remove('v');sbtn.disabled=false});
+    acEl.appendChild(it);
+  });acEl.classList.add('v');
+});
+inp.addEventListener('keydown',e=>{if(e.key==='Escape')acEl.classList.remove('v');if(e.key==='Enter'&&selCode)goToQuiz()});
+document.addEventListener('click',e=>{if(!e.target.closest('.s-wrap'))acEl.classList.remove('v')});
+sbtn.addEventListener('click',goToQuiz);
+
+function goToQuiz(){
+  if(!selCode)return;
+  document.getElementById('scr-search').classList.add('out');
+  setTimeout(()=>{
+    document.getElementById('scr-search').classList.add('hidden');
+    document.getElementById('scr-quiz').classList.remove('hidden');
+    qStep=0;updateQuiz();
+  },500);
+}
+
+function launchConst(){
+  document.getElementById('scr-quiz').classList.add('out');
+  setTimeout(()=>{
+    document.getElementById('scr-quiz').classList.add('hidden');
+    const job=DB.find(j=>j.code===selCode);
+    document.getElementById('tbj').textContent=job.name;
+    // Show quiz tags in top bar
+    const tags=document.getElementById('tbtags');tags.innerHTML='';
+    if(quizAnswers.motivation){const t=document.createElement('span');t.className='tb-tag';
+      const labels={ennui:'Anti-ennui',salaire:'Salaire+',sens:'Quête de sens',equilibre:'Équilibre',evolution:'Évolution',passion:'Passion'};
+      t.textContent=labels[quizAnswers.motivation]||quizAnswers.motivation;tags.appendChild(t)}
+    if(quizAnswers.environment){const t=document.createElement('span');t.className='tb-tag';
+      const labels={bureau:'Bureau',remote:'Remote',terrain:'Terrain',atelier:'Atelier',contact:'Public',mixte:'Hybride'};
+      t.textContent=labels[quizAnswers.environment]||quizAnswers.environment;tags.appendChild(t)}
+
+    document.getElementById('top-bar').classList.add('v');
+    document.getElementById('legend').classList.add('v');
+    document.getElementById('hint-360').classList.add('v');
+    setTimeout(()=>document.getElementById('hint-360').classList.remove('v'),6000);
+    bloom.strength=2.0;
+    setTimeout(()=>{buildConst(selCode);bloom.strength=1.6},300);
+  },500);
+}
+
+function back(){
+  isActive=false;while(cGroup.children.length)cGroup.remove(cGroup.children[0]);
+  starMeshes=[];lineMeshes=[];selected3D=null;quizAnswers={};
+  document.getElementById('top-bar').classList.remove('v');
+  document.getElementById('legend').classList.remove('v');
+  hideCard();document.getElementById('pm').classList.remove('v');
+  // Reset quiz
+  document.querySelectorAll('.quiz-opt').forEach(o=>o.classList.remove('selected'));
+  slider.value=1;document.getElementById('slider-val').textContent='6 mois';
+  // Show search
+  const ss=document.getElementById('scr-search');ss.classList.remove('hidden','out');
+  selCode=null;inp.value='';sbtn.disabled=true;
+  controls.maxDistance=500;camera.position.set(0,20,120);
+}
+
+// ═════════════════════════════════
+// JOB CARD & PATH (same as before)
+// ═════════════════════════════════
+function showCard(j,src){
+  const c=document.getElementById('jc'),b=document.getElementById('jcbg');
+  const sc=Math.round(j.prox*100),lv=sc>=70?'h':sc>=40?'m':'l',ll=sc>=70?'Très compatible':sc>=40?'Compatible':'Exploratoire';
+  b.className=`jc-badge ${lv}`;b.innerHTML=`★ ${sc}% — ${ll}`;
+  document.getElementById('jcn').textContent=j.name;document.getElementById('jcc').textContent=`${j.code} · ${j.sector}`;
+  const bd=document.getElementById('jcb');bd.innerHTML='';
+  bd.appendChild(ms('Description',`<p class="desc">${j.description}</p>`));
+  if(j.shared?.length)bd.appendChild(ms('Compétences communes',`<div class="tags">${j.shared.map(c=>`<span class="tag g">${c}</span>`).join('')}</div>`));
+  if(j.toAcq?.length)bd.appendChild(ms('Compétences à acquérir',`<div class="tags">${j.toAcq.map(c=>`<span class="tag o">${c}</span>`).join('')}</div>`));
+  bd.appendChild(ms('Salaires annuels bruts',`<div class="sgrid">${[['j','Junior'],['c','Confirmé'],['s','Senior']].map(([k,l])=>`<div class="sbox"><div class="sl">${l}</div><div class="sv">${fs(j.sal[k])}</div></div>`).join('')}</div>`));
+  const te={hausse:'↗ Hausse',stable:'↔ Stable',baisse:'↘ Baisse'};const tc=j.t>=.7?'#66BB6A':j.t>=.4?'#FF9800':'#EF5350';
+  bd.appendChild(ms('Marché',`<div class="mrow"><span class="ml">Tendance</span><span class="mv">${te[j.td]||j.td}</span></div><div class="mrow"><span class="ml">Tension</span><div class="tbar"><div class="tf" style="width:${j.t*100}%;background:${tc}"></div></div><span class="mv" style="color:${tc};font-size:13px">${Math.round(j.t*100)}%</span></div>`));
+  if(j.fm?.length)bd.appendChild(ms('Formations',`<div class="tags">${j.fm.map(f=>`<span class="tag p">${f}</span>`).join('')}</div>`));
+  const btn=document.createElement('button');btn.className='pbtn';btn.textContent='✨ Chemin de réorientation';btn.onclick=()=>showPath(src,j);bd.appendChild(btn);
+  c.classList.add('v');
+}
+function hideCard(){document.getElementById('jc').classList.remove('v');selected3D=null;starMeshes.forEach(m=>{if(m.material.uniforms?.uSc)m.material.uniforms.uSc.value=1});lineMeshes.forEach(l=>{if(l.userData?.to)l.material.opacity=l.userData.to.prox*.2})}
+function ms(t,h){const d=document.createElement('div');d.className='sec';d.innerHTML=`<div class="sec-t">${t}</div>${h}`;return d}
+function fs(v){return v?Math.round(v/1000)+'k€':'N/A'}
+
+function showPath(from,to){
+  const m=document.getElementById('pm'),c=document.getElementById('pmc');const sc=Math.round(to.prox*100);
+  c.innerHTML=`<div class="pm-t">Chemin de réorientation</div><div class="pm-s">${from.name} → ${to.name}</div>
+    <div class="ps"><div class="psd o">1</div><div class="psc"><div class="psl">📍 ${from.name}</div><div class="psdesc">${from.competences.length} compétences techniques · ${from.ct.length} transversales</div></div></div>
+    <div class="ps"><div class="psd a">2</div><div class="psc"><div class="psl">✅ Acquises (${to.shared?.length||0})</div><div class="psdesc">${to.shared?.map(c=>`<span style="color:#81C784">• ${c}</span>`).join('<br>')||'—'}</div></div></div>
+    <div class="ps"><div class="psd a">3</div><div class="psc"><div class="psl">📚 À développer (${to.toAcq?.length||0})</div><div class="psdesc">${to.toAcq?.map(c=>`<span style="color:#FFB74D">• ${c}</span>`).join('<br>')||'—'}</div></div></div>
+    <div class="ps"><div class="psd a">4</div><div class="psc"><div class="psl">🎓 Formations</div><div class="psdesc">${to.fm?.map(f=>`<span style="color:#B388FF">• ${f}</span>`).join('<br>')||'—'}</div></div></div>
+    <div class="ps"><div class="psd g">5</div><div class="psc"><div class="psl">🌟 ${to.name}</div><div class="psdesc">Compatibilité <strong style="color:var(--gold)">${sc}%</strong> · Salaire <strong>${fs(to.sal.c)}</strong></div></div></div>
+    <button class="pm-x" onclick="document.getElementById('pm').classList.remove('v')">Fermer</button>`;
+  m.classList.add('v');
+}
+
+document.getElementById('jcx').addEventListener('click',hideCard);
+document.getElementById('tbb').addEventListener('click',back);
+document.getElementById('pm').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('v')});
+</script>
+</body>
+</html>
