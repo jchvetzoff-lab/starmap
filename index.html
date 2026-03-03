@@ -791,12 +791,15 @@ document.getElementById('q-back').addEventListener('click',()=>{if(qStep>0){qSte
 // ═════════════════════════════════
 let selCode=null;
 const inp=document.getElementById('si'),acEl=document.getElementById('acl'),sbtn=document.getElementById('sb');
+let lastMatches=[];
 inp.addEventListener('input',()=>{
   const q=inp.value.toLowerCase().trim();
-  if(q.length<2){acEl.classList.remove('v');sbtn.disabled=true;selCode=null;return}
-  const m=DB.filter(j=>j.name.toLowerCase().includes(q)||j.code.toLowerCase().includes(q)||j.sector.toLowerCase().includes(q)).slice(0,8);
-  if(!m.length){acEl.classList.remove('v');return}
-  acEl.innerHTML='';m.forEach(j=>{
+  if(q.length<2){acEl.classList.remove('v');sbtn.disabled=true;selCode=null;lastMatches=[];return}
+  lastMatches=DB.filter(j=>j.name.toLowerCase().includes(q)||j.code.toLowerCase().includes(q)||j.sector.toLowerCase().includes(q)).slice(0,8);
+  if(!lastMatches.length){acEl.classList.remove('v');sbtn.disabled=true;selCode=null;return}
+  // Auto-select first match so button is always enabled when results exist
+  selCode=lastMatches[0].code;sbtn.disabled=false;
+  acEl.innerHTML='';lastMatches.forEach(j=>{
     const sc=SC[j.sector]||{r:150,g:150,b:200};
     const it=document.createElement('div');it.className='aci';
     it.innerHTML=`<span class="dot" style="background:rgb(${sc.r},${sc.g},${sc.b})"></span>${j.name}<span class="code">${j.code}</span>`;
@@ -804,9 +807,20 @@ inp.addEventListener('input',()=>{
     acEl.appendChild(it);
   });acEl.classList.add('v');
 });
-inp.addEventListener('keydown',e=>{if(e.key==='Escape')acEl.classList.remove('v');if(e.key==='Enter'&&selCode)goToQuiz()});
+inp.addEventListener('keydown',e=>{
+  if(e.key==='Escape')acEl.classList.remove('v');
+  if(e.key==='Enter'){
+    // If user typed but didn't pick from list, use first match
+    if(!selCode&&lastMatches.length){selCode=lastMatches[0].code;inp.value=lastMatches[0].name}
+    if(selCode){acEl.classList.remove('v');goToQuiz()}
+  }
+});
 document.addEventListener('click',e=>{if(!e.target.closest('.s-wrap'))acEl.classList.remove('v')});
-sbtn.addEventListener('click',goToQuiz);
+sbtn.addEventListener('click',()=>{
+  // If button clicked without explicit selection, use first match
+  if(!selCode&&lastMatches.length){selCode=lastMatches[0].code;inp.value=lastMatches[0].name}
+  goToQuiz();
+});
 
 function goToQuiz(){
   if(!selCode)return;
