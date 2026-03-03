@@ -507,39 +507,40 @@ function mkSoftNeb(sz, nBlobs, palette, maxAlpha){
   const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
 }
 
-// Nebula palettes — slightly brighter for more visible color
+// Nebula palettes — balanced brightness (between too dark and too bright)
 const nebPal={
-  deepPurple: [[60,28,95],[48,24,80],[72,34,108],[40,20,68],[55,30,88]],
-  cosmicBlue: [[28,42,100],[22,35,88],[34,48,115],[25,38,95],[30,44,105]],
-  warmNebula: [[95,34,60],[80,28,55],[108,40,68],[68,24,48],[88,38,58]],
-  tealGlow:   [[22,60,82],[18,55,75],[28,68,92],[15,48,68],[24,58,85]],
-  softRose:   [[80,28,55],[68,22,48],[95,34,62],[60,24,44],[75,30,52]]
+  deepPurple: [[52,24,82],[42,20,70],[62,30,95],[36,18,58],[48,26,76]],
+  cosmicBlue: [[24,36,88],[18,30,76],[30,42,100],[22,34,82],[26,38,92]],
+  warmNebula: [[82,30,52],[70,24,46],[95,36,58],[58,20,42],[76,34,50]],
+  tealGlow:   [[18,52,70],[15,46,64],[24,58,80],[12,42,58],[20,50,72]],
+  softRose:   [[70,24,46],[58,18,40],[82,30,52],[50,20,36],[65,26,44]]
 };
 
 // LAYER 1: Ambient sky sphere — subtle warm-purple base
 {
   const ambC=document.createElement('canvas');ambC.width=256;ambC.height=256;const actx=ambC.getContext('2d');
   const ambG=actx.createRadialGradient(128,128,0,128,128,128);
-  ambG.addColorStop(0,'rgba(22,16,48,0.32)');
-  ambG.addColorStop(0.35,'rgba(14,11,34,0.22)');
-  ambG.addColorStop(0.65,'rgba(8,7,22,0.12)');
-  ambG.addColorStop(1,'rgba(4,3,12,0.05)');
+  ambG.addColorStop(0,'rgba(18,14,40,0.28)');
+  ambG.addColorStop(0.35,'rgba(12,10,28,0.18)');
+  ambG.addColorStop(0.65,'rgba(7,6,18,0.10)');
+  ambG.addColorStop(1,'rgba(3,3,10,0.04)');
   actx.fillStyle=ambG;actx.fillRect(0,0,256,256);
   const ambTex=new THREE.CanvasTexture(ambC);
   const ambGeo=new THREE.SphereGeometry(2800,32,32);
-  const ambMat=new THREE.MeshBasicMaterial({map:ambTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.BackSide});
+  const ambMat=new THREE.MeshBasicMaterial({map:ambTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.BackSide});
   scene.add(new THREE.Mesh(ambGeo,ambMat));
 }
 
-// LAYER 2: Large diffuse washes — 10 sprites
+// LAYER 2: Large diffuse washes — 10 sprites (depthTest:false fixes flicker on rotation)
 {
   const washPals=[nebPal.deepPurple,nebPal.cosmicBlue,nebPal.warmNebula,nebPal.tealGlow,
                   nebPal.softRose,nebPal.deepPurple,nebPal.cosmicBlue,nebPal.tealGlow,
                   nebPal.warmNebula,nebPal.softRose];
   for(let n=0;n<10;n++){
-    const tex=mkSoftNeb(256,15+Math.floor(Math.random()*10),washPals[n],0.05+Math.random()*0.03);
-    const mat=new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.7});
+    const tex=mkSoftNeb(256,15+Math.floor(Math.random()*10),washPals[n],0.045+Math.random()*0.025);
+    const mat=new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0.65});
     const spr=new THREE.Sprite(mat);
+    spr.renderOrder=-2;
     const sz=800+Math.random()*1000;
     spr.scale.set(sz,sz,1);
     const bAng=(n/10)*Math.PI*2+(Math.random()-.5)*.3;
@@ -558,9 +559,10 @@ const nebPal={
 {
   const detPals=[nebPal.deepPurple,nebPal.cosmicBlue,nebPal.warmNebula,nebPal.tealGlow,nebPal.softRose];
   for(let n=0;n<14;n++){
-    const tex=mkSoftNeb(192,10+Math.floor(Math.random()*8),detPals[n%detPals.length],0.04+Math.random()*0.025);
-    const mat=new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.6});
+    const tex=mkSoftNeb(192,10+Math.floor(Math.random()*8),detPals[n%detPals.length],0.035+Math.random()*0.02);
+    const mat=new THREE.SpriteMaterial({map:tex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0.55});
     const spr=new THREE.Sprite(mat);
+    spr.renderOrder=-1;
     const sz=400+Math.random()*600;
     spr.scale.set(sz,sz,1);
     const th2=Math.random()*Math.PI*2;
